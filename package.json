@@ -1,0 +1,26 @@
+{
+  "name": "moodtalk-ai",
+  "version": "1.0.0",
+  "description": "AI-based emotion journaling and conversational reflection service using Node.js and Express",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/skgma1019/moodtalk-ai.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/skgma1019/moodtalk-ai/issues"
+  },
+  "homepage": "https://github.com/skgma1019/moodtalk-ai#readme",
+  "dependencies": {
+    "@google/genai": "^1.45.0",
+    "dotenv": "^17.3.1"
+  }
+}
