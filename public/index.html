@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MoodTalk AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Mood Journal + AI Reflection</p>
+          <h1>MoodTalk AI</h1>
+          <p class="hero-text">
+            로그인 후 오늘의 감정을 기록하고, AI가 하루 전체의 흐름을 따뜻하게 정리해드릴게요.
+          </p>
+          <div class="hero-stats">
+            <div>
+              <strong id="logCount">0</strong>
+              <span>기록 수</span>
+            </div>
+            <div>
+              <strong id="summaryCount">0</strong>
+              <span>AI 요약 수</span>
+            </div>
+          </div>
+        </div>
+        <div class="hero-panel">
+          <p>오늘의 질문</p>
+          <h2>지금 내 마음을 가장 크게 흔드는 건 무엇인가요?</h2>
+          <span>한 줄 메모부터 시작해도 충분해요.</span>
+        </div>
+      </header>
+
+      <section id="authSection" class="auth-layout">
+        <div class="card auth-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Sign Up</p>
+              <h2>회원가입</h2>
+            </div>
+          </div>
+          <form id="signupForm" class="auth-form">
+            <label>
+              닉네임
+              <input type="text" name="nickname" placeholder="예: 민지" required />
+            </label>
+            <label>
+              이메일
+              <input type="email" name="email" placeholder="you@example.com" required />
+            </label>
+            <label>
+              비밀번호
+              <input type="password" name="password" placeholder="6자 이상" required />
+            </label>
+            <button type="submit" class="primary-button">회원가입 후 시작하기</button>
+          </form>
+        </div>
+
+        <div class="card auth-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Login</p>
+              <h2>로그인</h2>
+            </div>
+          </div>
+          <form id="loginForm" class="auth-form">
+            <label>
+              이메일
+              <input type="email" name="email" placeholder="you@example.com" required />
+            </label>
+            <label>
+              비밀번호
+              <input type="password" name="password" placeholder="비밀번호 입력" required />
+            </label>
+            <button type="submit" class="primary-button">로그인</button>
+          </form>
+        </div>
+      </section>
+
+      <main id="appSection" class="dashboard hidden">
+        <section class="card user-strip">
+          <div>
+            <p class="section-kicker">Account</p>
+            <h2><span id="userNickname">사용자</span>님의 대시보드</h2>
+          </div>
+          <div class="user-actions">
+            <span id="userEmail" class="user-email"></span>
+            <button id="logoutButton" class="ghost-button" type="button">로그아웃</button>
+          </div>
+        </section>
+
+        <section class="card today-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Today</p>
+              <h2>오늘의 감정 총정리</h2>
+            </div>
+            <button id="refreshTodayButton" class="ghost-button" type="button">다시 정리하기</button>
+          </div>
+          <div id="todaySummary" class="summary-output empty">
+            오늘의 감정 기록이 쌓이면 AI가 하루 전체를 정리해드릴게요.
+          </div>
+        </section>
+
+        <section class="card composer">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Write</p>
+              <h2>감정 기록하기</h2>
+            </div>
+            <span class="badge">내 기록만 저장</span>
+          </div>
+          <form id="emotionForm" class="emotion-form">
+            <label>
+              감정
+              <input type="text" name="emotion" placeholder="예: 불안, 기쁨, 답답함" required />
+            </label>
+            <label>
+              강도
+              <input type="range" name="intensity" min="1" max="10" value="5" />
+              <span id="intensityValue">5 / 10</span>
+            </label>
+            <label>
+              태그
+              <input type="text" name="tags" placeholder="쉼표로 구분: 일, 인간관계, 피로" />
+            </label>
+            <label>
+              메모
+              <textarea
+                name="note"
+                rows="5"
+                placeholder="오늘 어떤 일이 있었고, 왜 그런 감정을 느꼈는지 적어보세요."
+                required
+              ></textarea>
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="primary-button">기록 저장</button>
+              <button type="button" id="resetFormButton" class="ghost-button">초기화</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="card summary-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Reflect</p>
+              <h2>개별 감정 AI 정리</h2>
+            </div>
+            <span class="badge subtle">Gemini</span>
+          </div>
+          <div id="selectedEmotion" class="selected-emotion empty">
+            아직 선택된 기록이 없습니다. 아래 목록에서 기록을 선택해 주세요.
+          </div>
+          <div class="summary-actions">
+            <button id="generateSummaryButton" class="primary-button" disabled type="button">선택 기록 AI 요약 저장</button>
+          </div>
+          <article id="summaryOutput" class="summary-output empty">
+            아직 생성된 AI 요약이 없습니다.
+          </article>
+        </section>
+
+        <section class="card timeline-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">History</p>
+              <h2>감정 타임라인</h2>
+            </div>
+            <button id="refreshButton" class="ghost-button" type="button">새로고침</button>
+          </div>
+          <div id="emotionList" class="emotion-list"></div>
+        </section>
+
+        <section class="card analytics-card">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Analytics</p>
+              <h2>감정 통계</h2>
+            </div>
+            <span class="badge">COUNT + GROUP BY</span>
+          </div>
+          <div class="chart-grid">
+            <div class="chart-panel chart-panel-wide">
+              <h3>감정 카테고리 맵</h3>
+              <canvas id="categoryChart"></canvas>
+            </div>
+            <div class="chart-panel">
+              <h3>감정별 빈도</h3>
+              <canvas id="frequencyChart"></canvas>
+            </div>
+            <div class="chart-panel">
+              <h3>감정 비율</h3>
+              <canvas id="ratioChart"></canvas>
+            </div>
+            <div class="chart-panel chart-panel-wide">
+              <h3>최근 감정 흐름</h3>
+              <canvas id="trendChart"></canvas>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <script type="module" src="/app.js"></script>
+  </body>
+  </html>
