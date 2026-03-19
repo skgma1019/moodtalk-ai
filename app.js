@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import emotionRoutes from './routes/emotionRoutes.js';
@@ -10,9 +11,12 @@ import { errorHandler, notFoundHandler } from './middlewares/errorHandler.js';
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const frontendDistPath = path.join(__dirname, 'frontend', 'dist');
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath));
+}
 
 app.get('/api/health', (req, res) => {
   res.json({
@@ -30,8 +34,18 @@ app.use('/api/emotions', emotionRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/stats', statsRoutes);
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+
+  const indexPath = path.join(frontendDistPath, 'index.html');
+
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+
+  return res.status(200).send('React frontend is not built yet. Run "npm run frontend:dev" or "npm run frontend:build".');
 });
 
 app.use(notFoundHandler);
