@@ -1,4 +1,4 @@
-export default function AuthForm({ title, buttonText, fields, onSubmit }) {
+export default function AuthForm({ title, buttonText, fields, helperText, footer, onSubmit }) {
   const handleSubmit = (event) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
@@ -11,6 +11,7 @@ export default function AuthForm({ title, buttonText, fields, onSubmit }) {
         <div>
           <p className="section-kicker">{title}</p>
           <h2>{title}</h2>
+          {helperText ? <p className="helper-text">{helperText}</p> : null}
         </div>
       </div>
       <form className="auth-form" onSubmit={handleSubmit}>
@@ -27,6 +28,7 @@ export default function AuthForm({ title, buttonText, fields, onSubmit }) {
           </label>
         ))}
         <button type="submit" className="primary-button">{buttonText}</button>
+        {footer}
       </form>
     </section>
   );

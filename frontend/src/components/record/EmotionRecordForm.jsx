@@ -27,6 +27,7 @@ export default function EmotionRecordForm({ onSubmit, saving }) {
         <div>
           <p className="section-kicker">Write</p>
           <h2>감정 기록</h2>
+          <p className="helper-text">짧은 감정 단어와 메모만 적어도 충분해요. 태그는 선택사항입니다.</p>
         </div>
         <span className="badge">Record Page</span>
       </div>
