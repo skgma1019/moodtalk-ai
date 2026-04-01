@@ -29,9 +29,7 @@ export async function summarizeEmotion({ emotion, note, tags }) {
 
 규칙:
 - 마크다운 문법을 쓰지 마라.
-- 별표 두 개, 샵, 불릿, 번호 목록을 쓰지 마라.
-- 딱딱한 제목형 문장을 쓰지 마라.
-- 사람처럼 자연스럽고 따뜻한 말투로 답하라.
+- 제목형 문장을 쓰지 마라.
 - 먼저 감정을 공감하고, 그 다음에 원인을 부드럽게 짚어라.
 - 마지막에는 짧지만 진심 어린 한마디를 덧붙여라.
 - 답변은 3문단 이내로 작성하라.
@@ -44,9 +42,9 @@ export async function summarizeEmotion({ emotion, note, tags }) {
 
     return sanitizeAiText(response.text);
   } catch {
-    return `${emotion}이라는 감정이 꽤 크게 남아 있는 하루였던 것 같아요. 메모를 보면 ${note.slice(0, 80)}${note.length > 80 ? '...' : ''} 같은 상황이 마음에 오래 남은 듯해요.
+    return `${emotion}이라는 감정이 오늘 꽤 크게 남아 있는 것 같아요. 메모를 보면 ${note.slice(0, 90)}${note.length > 90 ? '...' : ''} 같은 상황이 마음에 오래 남은 듯해요.
 
-이 감정을 너무 급하게 정리하려 하기보다, 왜 이렇게 마음이 흔들렸는지 천천히 들여다보는 게 더 중요해 보여요. 지금 느끼는 마음을 있는 그대로 인정해 주는 것만으로도 충분히 의미 있어요.`;
+지금 느끼는 감정을 너무 빨리 정리하려 하기보다, 왜 이런 마음이 올라왔는지 천천히 바라보는 것만으로도 충분히 의미가 있어요.`;
   }
 }
 
@@ -87,6 +85,42 @@ export async function classifyEmotionCategory({ emotion, note, tags }) {
   }
 }
 
+export async function parseSpokenEmotionEntry(transcript) {
+  try {
+    const ai = getClient();
+    const prompt = `
+너는 사용자가 자유롭게 말한 하루 이야기를 감정 기록 데이터로 구조화하는 역할을 한다.
+
+사용자 발화:
+${transcript}
+
+반드시 아래 JSON 형식으로만 답해라.
+{
+  "emotion": "대표 감정 한 단어",
+  "category": "기쁨/슬픔/화남/불안/평온/지침/혼란/기타 중 하나",
+  "note": "사용자 말을 자연스럽게 정리한 1~2문장",
+  "tags": ["핵심 태그1", "핵심 태그2", "핵심 태그3"]
+}
+
+규칙:
+- JSON 외의 텍스트를 쓰지 마라.
+- emotion은 너무 길지 않은 대표 감정으로 작성해라.
+- category는 지정된 8개 중 하나만 사용해라.
+- note는 사용자의 의미를 보존하면서 자연스럽게 정리해라.
+- tags는 최대 4개까지 넣어라.
+`.trim();
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    return normalizeParsedEntry(parseJsonBlock(response.text), transcript);
+  } catch {
+    return buildFallbackParsedEntry(transcript);
+  }
+}
+
 export async function summarizeTodayEmotion({ nickname, logs }) {
   try {
     const ai = getClient();
@@ -109,10 +143,8 @@ ${formattedLogs}
 규칙:
 - 한국어로 답하라.
 - 마크다운 문법을 쓰지 마라.
-- 별표 두 개, 샵, 번호 목록, 불릿 목록을 쓰지 마라.
 - 기계적인 분석 보고서처럼 쓰지 마라.
 - 먼저 오늘 하루 전체 분위기를 짚고, 반복된 감정 패턴을 설명해라.
-- 이어서 오늘 특히 크게 영향을 준 감정을 자연스럽게 설명해라.
 - 마지막에는 내일을 위한 짧고 따뜻한 한마디를 덧붙여라.
 - 4문단 이내로 작성하라.
 `.trim();
@@ -156,10 +188,6 @@ function inferCategoryFromText({ emotion, note, tags }) {
   return '기타';
 }
 
-function hasAny(text, keywords) {
-  return keywords.some((keyword) => text.includes(keyword));
-}
-
 function buildTodayFallbackSummary({ nickname, logs }) {
   const count = logs.length;
   const categoryCounts = new Map();
@@ -174,11 +202,78 @@ function buildTodayFallbackSummary({ nickname, logs }) {
     .filter((log) => Number(log.intensity) > 0)
     .sort((a, b) => Number(b.intensity) - Number(a.intensity))[0];
 
-  const firstParagraph = `${nickname}님의 오늘은 총 ${count}개의 감정 기록이 쌓였고, 전체적으로는 ${topCategory} 쪽의 마음이 가장 자주 드러난 하루였어요. 한 가지 감정만 이어진 날이라기보다, 상황에 따라 결이 조금씩 달라진 흔적이 보여요.`;
+  const firstParagraph = `${nickname}님의 오늘은 총 ${count}개의 감정 기록이 쌓였고, 전체적으로는 ${topCategory} 쪽의 마음이 가장 자주 드러난 하루였어요.`;
   const secondParagraph = intense
-    ? `특히 가장 강하게 남은 감정은 ${intense.emotion}이었어요. ${intense.note.slice(0, 110)}${intense.note.length > 110 ? '...' : ''} 같은 장면이 오늘 마음의 무게를 크게 만들었을 가능성이 있어 보여요.`
-    : `오늘 남긴 기록들을 보면 마음속에 남은 일들이 천천히 쌓이면서 하루의 분위기를 만들었던 것 같아요.`;
-  const thirdParagraph = `오늘의 감정을 완벽하게 정리하려 하기보다, 이렇게 기록으로 남긴 것 자체가 이미 큰 정리의 시작이에요. 오늘 마음이 어땠는지 알아차린 것만으로도 충분히 잘하고 있어요.`;
+    ? `특히 가장 강하게 남은 감정은 ${intense.emotion}이었어요. ${intense.note.slice(0, 110)}${intense.note.length > 110 ? '...' : ''} 같은 일이 오늘 마음의 무게를 크게 만든 것 같아요.`
+    : '오늘 남긴 기록들을 보면 여러 감정이 조금씩 쌓이면서 하루의 분위기를 만든 것 같아요.';
+  const thirdParagraph = '오늘의 감정을 완벽하게 정리하려 하기보다, 이렇게 기록으로 남긴 것 자체가 이미 큰 정리의 시작이에요.';
 
   return `${firstParagraph}\n\n${secondParagraph}\n\n${thirdParagraph}`;
+}
+
+function parseJsonBlock(text) {
+  const raw = String(text ?? '').trim();
+  const match = raw.match(/\{[\s\S]*\}/);
+
+  if (!match) {
+    throw new Error('No JSON object found');
+  }
+
+  return JSON.parse(match[0]);
+}
+
+function normalizeParsedEntry(parsed, transcript) {
+  const emotion = String(parsed?.emotion || '').trim() || inferEmotionFromText(transcript);
+  const category = normalizeCategory(parsed?.category);
+  const note = String(parsed?.note || '').trim() || transcript.trim();
+  const tags = Array.isArray(parsed?.tags)
+    ? parsed.tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 4)
+    : [];
+
+  return {
+    emotion,
+    category,
+    note,
+    tags,
+  };
+}
+
+function buildFallbackParsedEntry(transcript) {
+  const emotion = inferEmotionFromText(transcript);
+  const category = inferCategoryFromText({
+    emotion,
+    note: transcript,
+    tags: [],
+  });
+
+  return {
+    emotion,
+    category,
+    note: transcript.trim(),
+    tags: inferTagsFromText(transcript),
+  };
+}
+
+function inferEmotionFromText(text) {
+  const normalized = String(text || '').toLowerCase();
+
+  if (hasAny(normalized, ['행복', '기뻐', '좋아', '신나', '즐거'])) return '기쁨';
+  if (hasAny(normalized, ['슬퍼', '우울', '눈물', '허무'])) return '슬픔';
+  if (hasAny(normalized, ['짜증', '화나', '분노', '열받'])) return '화남';
+  if (hasAny(normalized, ['불안', '걱정', '초조', '긴장'])) return '불안';
+  if (hasAny(normalized, ['편안', '차분', '평온'])) return '평온';
+  if (hasAny(normalized, ['피곤', '지쳤', '힘들', '졸려'])) return '지침';
+  if (hasAny(normalized, ['혼란', '헷갈', '복잡'])) return '혼란';
+
+  return '복잡한 마음';
+}
+
+function inferTagsFromText(text) {
+  const normalized = String(text || '');
+  const keywords = ['학교', '공부', '시험', '회사', '일', '가족', '친구', '연애', '수면', '건강', '스트레스'];
+  return keywords.filter((keyword) => normalized.includes(keyword)).slice(0, 4);
+}
+
+function hasAny(text, keywords) {
+  return keywords.some((keyword) => text.includes(keyword));
 }

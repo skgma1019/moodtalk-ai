@@ -1,5 +1,6 @@
-import { summarizeEmotion, summarizeTodayEmotion } from '../services/geminiService.js';
+import { parseSpokenEmotionEntry, summarizeEmotion, summarizeTodayEmotion } from '../services/geminiService.js';
 import { getEmotionLogById, getTodayEmotionLogs, saveEmotionSummary } from '../services/emotionService.js';
+import { transcribeAudioFile } from '../services/transcriptionService.js';
 
 export async function summarizeEmotionLog(req, res, next) {
   try {
@@ -75,6 +76,42 @@ export async function summarizeToday(req, res, next) {
     return res.json({
       summary,
       count: logs.length,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function analyzeSpeechEntry(req, res, next) {
+  try {
+    const { transcript } = req.body;
+
+    if (!transcript || !String(transcript).trim()) {
+      return res.status(400).json({
+        message: 'transcript가 필요합니다.',
+      });
+    }
+
+    const parsed = await parseSpokenEmotionEntry(String(transcript).trim());
+
+    return res.json(parsed);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function transcribeAudio(req, res, next) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        message: 'audio 파일이 필요합니다.',
+      });
+    }
+
+    const transcript = await transcribeAudioFile(req.file);
+
+    return res.json({
+      transcript,
     });
   } catch (error) {
     return next(error);

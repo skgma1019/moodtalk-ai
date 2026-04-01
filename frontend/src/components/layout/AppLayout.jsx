@@ -1,11 +1,33 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 
+function getHeroContent(pathname, user) {
+  if (pathname.startsWith('/record')) {
+    return {
+      title: `안녕하세요, ${user?.nickname ?? '사용자'}님!`,
+      description: '오늘 하루는 어떠셨나요? 감정을 기록하고 분석해보세요.',
+    };
+  }
+
+  if (pathname.startsWith('/dashboard')) {
+    return {
+      title: `안녕하세요, ${user?.nickname ?? '사용자'}님!`,
+      description: '오늘의 감정 분석 결과를 한눈에 확인해보세요.',
+    };
+  }
+
+  return {
+    title: '당신의 감정을 기록하고 이해하세요',
+    description: 'AI 기반 감정 분석으로 마음의 패턴을 발견하고 더 나은 하루를 만들어보세요.',
+  };
+}
+
 export default function AppLayout() {
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isAuthPage = location.pathname.startsWith('/auth');
+  const hero = getHeroContent(location.pathname, user);
 
   const handleAuthClick = () => {
     if (token) {
@@ -20,44 +42,46 @@ export default function AppLayout() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="brand-block">
-          <p className="eyebrow">Mood Journal + AI Reflection</p>
-          <h1 className="brand-title">MoodTalk AI</h1>
-        </div>
+        <button type="button" className="brand-link" onClick={() => navigate(token ? '/dashboard' : '/auth/login')}>
+          <span className="brand-mark">♥</span>
+          <span className="brand-name">감정일기</span>
+        </button>
 
         <nav className="topnav">
-          <NavLink to="/record" className={({ isActive }) => `topnav-link ${isActive ? 'active' : ''}`}>
-            감정기록
-          </NavLink>
-          <NavLink to="/dashboard" className={({ isActive }) => `topnav-link ${isActive ? 'active' : ''}`}>
-            대시보드
-          </NavLink>
-          <button type="button" className="topnav-link auth-action" onClick={handleAuthClick}>
-            {token ? '로그아웃' : '로그인'}
-          </button>
+          {token ? (
+            <>
+              <NavLink to="/record" className={({ isActive }) => `topnav-link ${isActive ? 'active' : ''}`}>
+                ♡ 감정 기록
+              </NavLink>
+              <NavLink to="/dashboard" className={({ isActive }) => `topnav-link ${isActive ? 'active' : ''}`}>
+                ▦ 대시보드
+              </NavLink>
+              <button type="button" className="topnav-link auth-action" onClick={handleAuthClick}>
+                ⇢ 로그아웃
+              </button>
+            </>
+          ) : (
+            <>
+              <NavLink to="/auth/login" className={({ isActive }) => `topnav-link text-link ${isActive ? 'active' : ''}`}>
+                로그인
+              </NavLink>
+              <NavLink to="/auth/signup" className={({ isActive }) => `topnav-link signup-link ${isActive ? 'active' : ''}`}>
+                회원가입
+              </NavLink>
+            </>
+          )}
         </nav>
       </header>
 
-      {!isAuthPage ? (
-        <section className="hero hero-compact">
-          <div className="hero-copy">
-            <p className="eyebrow">Welcome</p>
-            <h2 className="hero-heading">
-              {token ? `${user?.nickname}님의 감정 흐름을 차분하게 살펴볼 시간이에요.` : '로그인하고 감정 기록을 시작해보세요.'}
-            </h2>
-            <p className="hero-text">
-              {token
-                ? '감정 기록 화면에서 메모를 남기고, 대시보드에서 하루 요약과 통계를 바로 확인할 수 있습니다.'
-                : '로그인하면 감정 기록, AI 요약, 대시보드를 모두 사용할 수 있습니다.'}
-            </p>
+      <section className="hero-banner">
+        <div className="hero-banner__inner">
+          <div className="hero-banner__copy">
+            <h1>{hero.title}</h1>
+            <p>{hero.description}</p>
           </div>
-          <div className="hero-panel">
-            <p>현재 상태</p>
-            <h2>{token ? '로그인 완료' : '로그인 필요'}</h2>
-            <span>{token ? user?.email : '상단 오른쪽 로그인 버튼으로 바로 이동할 수 있어요.'}</span>
-          </div>
-        </section>
-      ) : null}
+          <div className="hero-banner__badge">{token ? '👋' : '💭'}</div>
+        </div>
+      </section>
 
       <main className={isAuthPage ? 'auth-main' : 'dashboard'}>
         <Outlet />

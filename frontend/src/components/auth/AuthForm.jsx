@@ -9,15 +9,16 @@ export default function AuthForm({ title, buttonText, fields, helperText, footer
     <section className="card auth-card">
       <div className="section-head">
         <div>
-          <p className="section-kicker">{title}</p>
+          <p className="section-kicker">Auth</p>
           <h2>{title}</h2>
           {helperText ? <p className="helper-text">{helperText}</p> : null}
         </div>
       </div>
+
       <form className="auth-form" onSubmit={handleSubmit}>
         {fields.map((field) => (
           <label key={field.name}>
-            {field.label}
+            <span>{field.label}</span>
             <input
               type={field.type}
               name={field.name}
@@ -27,7 +28,10 @@ export default function AuthForm({ title, buttonText, fields, helperText, footer
             />
           </label>
         ))}
-        <button type="submit" className="primary-button">{buttonText}</button>
+
+        <button type="submit" className="primary-button">
+          {buttonText}
+        </button>
         {footer}
       </form>
     </section>

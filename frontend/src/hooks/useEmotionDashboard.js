@@ -11,6 +11,15 @@ export function useEmotionDashboard() {
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async (preferredId) => {
+    if (!token) {
+      setEmotions([]);
+      setStats({ frequency: [], categories: [], trend: [] });
+      setTodaySummary('');
+      setSelectedEmotionId(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const [emotionList, statsData, todayData] = await Promise.all([
       emotionApi.list(token),
@@ -34,6 +43,9 @@ export function useEmotionDashboard() {
     await refresh(created.id);
   };
 
+  const transcribeAudio = async (audioBlob) => emotionApi.transcribeAudio(audioBlob, token);
+  const analyzeEntry = async (transcript) => emotionApi.analyzeEntry(transcript, token);
+
   const summarizeEmotion = async (emotionLogId) => {
     const result = await emotionApi.summarizeOne(emotionLogId, token);
     await refresh(result.emotionLog.id);
@@ -49,6 +61,8 @@ export function useEmotionDashboard() {
     loading,
     refresh,
     createEmotion,
+    transcribeAudio,
+    analyzeEntry,
     summarizeEmotion,
   };
 }

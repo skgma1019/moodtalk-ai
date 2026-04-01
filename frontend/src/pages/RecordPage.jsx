@@ -8,6 +8,8 @@ export default function RecordPage() {
   const { token } = useAuth();
   const {
     createEmotion,
+    transcribeAudio,
+    analyzeEntry,
     emotions,
     selectedEmotion,
     setSelectedEmotionId,
@@ -48,11 +50,16 @@ export default function RecordPage() {
           <h2>감정 기록 화면</h2>
         </div>
         <p className="page-description">
-          새 감정을 기록하고, 최근 기록과 AI 요약을 한 화면에서 바로 확인할 수 있습니다.
+          내 감정을 기록하고, 최근 기록과 AI 요약까지 한 화면에서 바로 확인할 수 있습니다.
         </p>
       </section>
 
-      <EmotionRecordForm onSubmit={handleCreate} saving={saving} />
+      <EmotionRecordForm
+        onSubmit={handleCreate}
+        onTranscribeAudio={transcribeAudio}
+        onAnalyzeSpeech={analyzeEntry}
+        saving={saving}
+      />
 
       <section className="card selected-card">
         <div className="section-head">
@@ -84,7 +91,7 @@ export default function RecordPage() {
               {selectedEmotion.ai_summary || '아직 저장된 AI 요약이 없습니다. 위 버튼으로 생성할 수 있어요.'}
             </>
           ) : (
-            '아래 기록 목록에서 하나를 선택하면 이곳에 자세한 내용과 AI 요약이 표시됩니다.'
+            '아래 기록 목록에서 하나를 선택하면 상세 내용과 AI 요약을 볼 수 있습니다.'
           )}
         </div>
       </section>
