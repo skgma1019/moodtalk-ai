@@ -8,7 +8,7 @@ export default function DashboardPage() {
   const { loading, todaySummary, stats, emotions } = useEmotionDashboard();
 
   if (!token) {
-    return <Navigate to="/auth/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (loading) {

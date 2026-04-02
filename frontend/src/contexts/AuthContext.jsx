@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { authApi } from '../services/api.js';
+import { showErrorAlert } from '../utils/alerts.js';
 
 const TOKEN_KEY = 'moodtalk_token';
 const USER_KEY = 'moodtalk_user';
@@ -22,9 +23,12 @@ export function AuthProvider({ children }) {
     authApi
       .me(token)
       .then((data) => setUser(data.user))
-      .catch(() => logout())
+      .catch(() => {
+        logout();
+        showErrorAlert('로그인 정보가 만료되었습니다. 다시 로그인해 주세요.');
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [token]);
 
   const persistAuth = (data) => {
     setToken(data.token);

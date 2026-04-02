@@ -15,7 +15,7 @@ if hasattr(sys.stderr, "reconfigure"):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--audio", required=True)
-    parser.add_argument("--model", default="base")
+    parser.add_argument("--model", default="small")
     parser.add_argument("--language", default="ko")
     parser.add_argument("--cache-dir", required=True)
     return parser.parse_args()
@@ -38,11 +38,22 @@ def main():
     segments, info = model.transcribe(
         str(audio_path),
         language=args.language,
-        beam_size=5,
+        initial_prompt="일상 대화, 감정 기록, 한국어 문장, 불안, 기쁨, 슬픔, 스트레스, 학교, 회사, 인간관계, 하루 기록",
+        beam_size=8,
+        best_of=5,
+        repetition_penalty=1.05,
+        length_penalty=1.0,
+        temperature=0.0,
         vad_filter=True,
+        vad_parameters={
+            "min_silence_duration_ms": 500,
+            "speech_pad_ms": 250,
+        },
+        condition_on_previous_text=False,
     )
 
     text = " ".join(segment.text.strip() for segment in segments if segment.text.strip()).strip()
+    text = " ".join(text.split())
 
     payload = {
         "text": text,

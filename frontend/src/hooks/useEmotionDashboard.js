@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { emotionApi } from '../services/api.js';
+import { showErrorAlert } from '../utils/alerts.js';
 
 export function useEmotionDashboard() {
   const { token } = useAuth();
@@ -21,17 +22,23 @@ export function useEmotionDashboard() {
     }
 
     setLoading(true);
-    const [emotionList, statsData, todayData] = await Promise.all([
-      emotionApi.list(token),
-      emotionApi.stats(token),
-      emotionApi.summarizeToday(token),
-    ]);
 
-    setEmotions(emotionList);
-    setStats(statsData);
-    setTodaySummary(todayData.summary);
-    setSelectedEmotionId((current) => preferredId ?? current ?? emotionList[0]?.id ?? null);
-    setLoading(false);
+    try {
+      const [emotionList, statsData, todayData] = await Promise.all([
+        emotionApi.list(token),
+        emotionApi.stats(token),
+        emotionApi.summarizeToday(token),
+      ]);
+
+      setEmotions(emotionList);
+      setStats(statsData);
+      setTodaySummary(todayData.summary);
+      setSelectedEmotionId((current) => preferredId ?? current ?? emotionList[0]?.id ?? null);
+    } catch (error) {
+      showErrorAlert(error, '대시보드 데이터를 불러오지 못했습니다.');
+    } finally {
+      setLoading(false);
+    }
   }, [token]);
 
   useEffect(() => {

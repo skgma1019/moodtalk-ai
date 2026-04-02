@@ -1,22 +1,36 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { showErrorAlert } from '../../utils/alerts.js';
+
+function getSpeechRecognition() {
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
 
 export default function EmotionRecordForm({
   onSubmit,
-  onTranscribeAudio,
   onAnalyzeSpeech,
   saving,
 }) {
   const [mode, setMode] = useState('text');
   const [intensity, setIntensity] = useState(5);
   const [recording, setRecording] = useState(false);
-  const [transcribing, setTranscribing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [parsedEntry, setParsedEntry] = useState(null);
-  const mediaRecorderRef = useRef(null);
-  const streamRef = useRef(null);
-  const chunksRef = useRef([]);
-  const audioBlobRef = useRef(null);
+  const [speechSupported, setSpeechSupported] = useState(true);
+
+  const recognitionRef = useRef(null);
+  const finalTranscriptRef = useRef('');
+  const stopRequestedRef = useRef(false);
+
+  useEffect(() => {
+    setSpeechSupported(Boolean(getSpeechRecognition()));
+
+    return () => {
+      stopRequestedRef.current = true;
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+    };
+  }, []);
 
   const handleTextSubmit = (event) => {
     event.preventDefault();
@@ -38,60 +52,84 @@ export default function EmotionRecordForm({
     setIntensity(5);
   };
 
-  const transcribeBlob = async (audioBlob) => {
-    if (!audioBlob) {
+  const startRecording = async () => {
+    const SpeechRecognition = getSpeechRecognition();
+
+    if (!SpeechRecognition) {
+      setSpeechSupported(false);
+      showErrorAlert('이 브라우저는 실시간 음성 인식을 지원하지 않습니다. Chrome 브라우저에서 다시 시도해 주세요.');
       return;
     }
 
-    setTranscribing(true);
-    try {
-      const result = await onTranscribeAudio(audioBlob);
-      setTranscript(result.transcript || '');
-    } finally {
-      setTranscribing(false);
-    }
-  };
-
-  const startRecording = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    streamRef.current = stream;
-    chunksRef.current = [];
-    audioBlobRef.current = null;
+    finalTranscriptRef.current = '';
+    stopRequestedRef.current = false;
     setTranscript('');
     setParsedEntry(null);
 
-    const recorder = new MediaRecorder(stream);
-    mediaRecorderRef.current = recorder;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ko-KR';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
 
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        chunksRef.current.push(event.data);
+    recognition.onstart = () => {
+      setRecording(true);
+    };
+
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const text = result[0]?.transcript || '';
+
+        if (result.isFinal) {
+          finalTranscriptRef.current = `${finalTranscriptRef.current} ${text}`.trim();
+        } else {
+          interimTranscript += text;
+        }
+      }
+
+      const combinedTranscript = `${finalTranscriptRef.current} ${interimTranscript}`.trim();
+      setTranscript(combinedTranscript);
+    };
+
+    recognition.onerror = (event) => {
+      setRecording(false);
+
+      if (event.error === 'not-allowed') {
+        showErrorAlert('마이크 권한이 필요합니다. 브라우저에서 마이크 접근을 허용해 주세요.');
+        return;
+      }
+
+      if (event.error === 'no-speech') {
+        showErrorAlert('음성이 감지되지 않았습니다. 조금 더 또렷하게 말씀해 주세요.');
+        return;
+      }
+
+      showErrorAlert(`음성 인식 중 오류가 발생했습니다. (${event.error})`);
+    };
+
+    recognition.onend = () => {
+      setRecording(false);
+
+      if (!stopRequestedRef.current) {
+        recognition.start();
       }
     };
 
-    recorder.onstop = async () => {
-      const recordedBlob = new Blob(chunksRef.current, { type: 'audio/webm' });
-      audioBlobRef.current = recordedBlob;
-      stream.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-      setRecording(false);
-      await transcribeBlob(recordedBlob);
-    };
-
-    recorder.start();
-    setRecording(true);
+    recognitionRef.current = recognition;
+    recognition.start();
   };
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-  };
-
-  const handleTranscribe = async () => {
-    await transcribeBlob(audioBlobRef.current);
+    stopRequestedRef.current = true;
+    recognitionRef.current?.stop();
   };
 
   const handleAnalyze = async () => {
     if (!transcript.trim()) {
+      showErrorAlert('먼저 음성 또는 텍스트 내용을 준비해 주세요.');
       return;
     }
 
@@ -106,6 +144,7 @@ export default function EmotionRecordForm({
 
   const handleSaveParsedEntry = () => {
     if (!parsedEntry) {
+      showErrorAlert('먼저 AI 분석을 진행해 주세요.');
       return;
     }
 
@@ -119,7 +158,7 @@ export default function EmotionRecordForm({
     setTranscript('');
     setParsedEntry(null);
     setIntensity(5);
-    audioBlobRef.current = null;
+    finalTranscriptRef.current = '';
   };
 
   return (
@@ -129,7 +168,7 @@ export default function EmotionRecordForm({
           <p className="section-kicker">Write</p>
           <h2>감정 기록</h2>
           <p className="helper-text">
-            직접 적어도 되고, 그냥 말해도 됩니다. AI가 감정과 내용을 정리해줄 수 있어요.
+            직접 적어도 되고, 말하는 동안 실시간으로 문장을 띄울 수도 있어요.
           </p>
         </div>
         <span className="badge">Record Page</span>
@@ -176,15 +215,18 @@ export default function EmotionRecordForm({
         </form>
       ) : (
         <div className="voice-panel">
+          {!speechSupported ? (
+            <div className="summary-output muted-box">
+              현재 브라우저에서는 실시간 음성 인식을 지원하지 않습니다. Chrome에서 접속해 주세요.
+            </div>
+          ) : null}
+
           <div className="voice-actions">
-            <button type="button" className="primary-button" onClick={startRecording} disabled={recording}>
-              {recording ? '녹음 중...' : '녹음 시작'}
+            <button type="button" className="primary-button" onClick={startRecording} disabled={recording || !speechSupported}>
+              {recording ? '듣는 중...' : '실시간 음성 시작'}
             </button>
             <button type="button" className="ghost-button" onClick={stopRecording} disabled={!recording}>
-              녹음 중지
-            </button>
-            <button type="button" className="ghost-button" onClick={handleTranscribe} disabled={recording || !audioBlobRef.current || transcribing}>
-              {transcribing ? '전사 중...' : '전사 다시하기'}
+              음성 멈추기
             </button>
             <button type="button" className="ghost-button" onClick={handleAnalyze} disabled={!transcript.trim() || analyzing}>
               {analyzing ? '분석 중...' : 'AI 분석'}
@@ -192,12 +234,12 @@ export default function EmotionRecordForm({
           </div>
 
           <label>
-            전사된 문장
+            실시간 인식 문장
             <textarea
               rows="5"
               value={transcript}
               onChange={(event) => setTranscript(event.target.value)}
-              placeholder="녹음을 멈추면 자동으로 전사된 텍스트가 여기에 바로 표시됩니다."
+              placeholder="음성 시작을 누르고 말하면 문장이 실시간으로 여기에 표시됩니다."
             />
           </label>
 
@@ -221,7 +263,7 @@ export default function EmotionRecordForm({
                 {parsedEntry.note}
               </>
             ) : (
-              '음성을 전사한 뒤 AI 분석을 누르면 감정, 카테고리, 태그, 내용 정리가 자동으로 표시됩니다.'
+              '실시간으로 인식된 문장을 확인한 뒤 AI 분석을 누르면 감정과 카테고리를 정리해줍니다.'
             )}
           </div>
 

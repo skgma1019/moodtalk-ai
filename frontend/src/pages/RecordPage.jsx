@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import EmotionRecordForm from '../components/record/EmotionRecordForm.jsx';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useEmotionDashboard } from '../hooks/useEmotionDashboard.js';
+import { showErrorAlert } from '../utils/alerts.js';
 
 export default function RecordPage() {
   const { token } = useAuth();
@@ -20,13 +21,15 @@ export default function RecordPage() {
   const [summarizing, setSummarizing] = useState(false);
 
   if (!token) {
-    return <Navigate to="/auth/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   const handleCreate = async (payload) => {
     setSaving(true);
     try {
       await createEmotion(payload);
+    } catch (error) {
+      showErrorAlert(error, '감정 기록 저장 중 오류가 발생했습니다.');
     } finally {
       setSaving(false);
     }
@@ -34,11 +37,32 @@ export default function RecordPage() {
 
   const handleSummarize = async () => {
     if (!selectedEmotion) return;
+
     setSummarizing(true);
     try {
       await summarizeEmotion(selectedEmotion.id);
+    } catch (error) {
+      showErrorAlert(error, 'AI 요약 저장 중 오류가 발생했습니다.');
     } finally {
       setSummarizing(false);
+    }
+  };
+
+  const handleTranscribeAudio = async (audioBlob) => {
+    try {
+      return await transcribeAudio(audioBlob);
+    } catch (error) {
+      showErrorAlert(error, '음성 전사 중 오류가 발생했습니다.');
+      throw error;
+    }
+  };
+
+  const handleAnalyzeEntry = async (transcript) => {
+    try {
+      return await analyzeEntry(transcript);
+    } catch (error) {
+      showErrorAlert(error, 'AI 분석 중 오류가 발생했습니다.');
+      throw error;
     }
   };
 
@@ -56,8 +80,8 @@ export default function RecordPage() {
 
       <EmotionRecordForm
         onSubmit={handleCreate}
-        onTranscribeAudio={transcribeAudio}
-        onAnalyzeSpeech={analyzeEntry}
+        onTranscribeAudio={handleTranscribeAudio}
+        onAnalyzeSpeech={handleAnalyzeEntry}
         saving={saving}
       />
 

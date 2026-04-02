@@ -177,6 +177,13 @@ textarea {
   grid-template-columns: 1fr;
 }
 
+.auth-page-shell {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
 .full-span,
 .today-card,
 .analytics-card {
@@ -324,7 +331,7 @@ h3 {
 }
 
 .auth-card {
-  width: min(560px, 100%);
+  width: 100%;
   margin: 0 auto;
 }
 

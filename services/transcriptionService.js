@@ -15,7 +15,7 @@ function getPythonPath() {
 }
 
 function getWhisperModel() {
-  return process.env.WHISPER_MODEL || 'base';
+  return process.env.WHISPER_MODEL || 'small';
 }
 
 function getAudioExtension(file) {
